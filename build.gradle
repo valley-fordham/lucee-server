@@ -1,0 +1,80 @@
+import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
+
+plugins {
+    id 'java-library'
+    id "com.github.johnrengelman.shadow" version "6.0.0"
+    id 'org.beryx.runtime' version '1.11.3'
+}
+
+group 'com.glenfordham'
+version '1.0.'+gitCommitNumber()
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_14
+    targetCompatibility = JavaVersion.VERSION_14
+}
+
+sourceSets.main.java.srcDirs = ['src/main/java/']
+// Log4j2 XML resources
+sourceSets.main.resources.srcDirs = [ "src/main/resources" ]
+sourceSets.main.resources.includes = [ "**/*.xml" ]
+
+mainClassName = 'com.glenfordham.webserver.Application'
+final OperatingSystem os = DefaultNativePlatform.currentOperatingSystem
+final String sep = File.separator
+
+jar {
+    manifest {
+        attributes(
+                'Main-Class': mainClassName,
+                'Implementation-Title': project.name,
+                // Use 'version' so Shadow Jar gets version properly
+                'Implementation-Version': version,
+        )
+    }
+}
+
+runtime {
+    imageDir = file("${buildDir}${sep}webserver")
+    imageZip = file("${buildDir}${sep}webserver-${version}.zip")
+    targetPlatform("linux-s390x") {
+        jdkHome = jdkDownload("https://github.com/AdoptOpenJDK/openjdk14-binaries/releases/download/jdk-14.0.1%2B7.1/OpenJDK14U-jdk_x64_windows_hotspot_14.0.1_7.zip")
+    }
+
+    targetPlatform("win") {
+        jdkHome = jdkDownload("https://github.com/AdoptOpenJDK/openjdk14-binaries/releases/download/jdk-14.0.1%2B7.1/OpenJDK14U-jdk_x64_windows_hotspot_14.0.1_7.zip")
+    }
+
+    targetPlatform("mac") {
+        jdkHome = jdkDownload("https://github.com/AdoptOpenJDK/openjdk14-binaries/releases/download/jdk-14.0.1%2B7/OpenJDK14U-jdk_x64_mac_hotspot_14.0.1_7.tar.gz")
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    final String tomcatVersion = '9.0.36'
+
+    testImplementation 'junit:junit:4.12'
+
+    implementation 'commons-cli:commons-cli:1.4'
+    implementation 'commons-io:commons-io:2.7'
+    implementation 'org.apache.commons:commons-lang3:3.11'
+    implementation 'org.apache.logging.log4j:log4j-core:2.13.3'
+    implementation 'org.apache.tomcat.embed:tomcat-embed-core:'+tomcatVersion
+    implementation 'org.apache.tomcat.embed:tomcat-embed-jasper:'+tomcatVersion
+    implementation 'org.apache.tomcat:tomcat-jasper:'+tomcatVersion
+    implementation 'org.apache.tomcat:tomcat-jasper-el:'+tomcatVersion
+    implementation 'org.apache.tomcat:tomcat-jsp-api:'+tomcatVersion
+}
+
+static def gitCommitNumber() {
+    String commitNumber = "git rev-list --count HEAD --no-merges".execute().text.toString()
+    if (commitNumber.trim().isEmpty()) {
+        return 0
+    } else {
+        return commitNumber.trim().toInteger()
+    }
+}
