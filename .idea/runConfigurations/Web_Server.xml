@@ -1,8 +1,8 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Web Server" type="Application" factoryName="Application">
     <option name="MAIN_CLASS_NAME" value="com.glenfordham.webserver.Application" />
-    <module name="webserver.main" />
-    <option name="PROGRAM_PARAMETERS" value="-p 80" />
+    <module name="lucee-server.main" />
+    <option name="PROGRAM_PARAMETERS" value="-p 80 -w $PROJECT_DIR$/../../luceeWebApp" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/build" />
     <method v="2">
       <option name="Make" enabled="true" />

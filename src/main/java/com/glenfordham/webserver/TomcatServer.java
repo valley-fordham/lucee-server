@@ -3,12 +3,15 @@ package com.glenfordham.webserver;
 import com.glenfordham.webserver.config.Arguments;
 import com.glenfordham.webserver.config.ConfigProperties;
 import com.glenfordham.webserver.logging.Log;
+import org.apache.catalina.Context;
 import org.apache.catalina.WebResourceRoot;
-import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.webresources.DirResourceSet;
 import org.apache.catalina.webresources.JarResourceSet;
 import org.apache.catalina.webresources.StandardRoot;
+import org.apache.catalina.webresources.TomcatURLStreamHandlerFactory;
+import org.apache.tomcat.util.descriptor.web.FilterDef;
+import org.apache.tomcat.util.descriptor.web.FilterMap;
 
 import java.io.File;
 import java.net.BindException;
@@ -34,11 +37,38 @@ public class TomcatServer {
                 tomcat.setBaseDir(tempPath.toString());
                 tomcat.setPort(configProperties.getPropertyValueAsInt(Arguments.PORT));
                 tomcat.getConnector();
+                // Prevent multiple factory exception
+                TomcatURLStreamHandlerFactory.disable();
 
-                StandardContext ctx = (StandardContext) tomcat.addWebapp("", new File(root.getAbsolutePath()).getAbsolutePath());
+                // Initialise Lucee
+                final String webAppRootPath = new File(configProperties.getPropertyValue(Arguments.WEB_APP_ROOT)).getAbsolutePath();
+                Context ctx = tomcat.addContext("", webAppRootPath + "/webroot");
+                Class<?> servletClass = lucee.loader.servlet.CFMLServlet.class;
+                final String servletName = servletClass.getSimpleName();
+                Tomcat.addServlet(ctx, servletName, servletClass.getName());
+                ctx.addServletMappingDecoded("*.cfm", servletName);
+                ctx.addServletMappingDecoded("*.cfc", servletName);
+                ctx.addServletMappingDecoded("*.cfml", servletName);
+                ctx.addServletMappingDecoded("/index.cfc/*", servletName);
+                ctx.addServletMappingDecoded("/index.cfm/*", servletName);
+                ctx.addServletMappingDecoded("/index/cfml/*", servletName);
 
-                // Load Servlet config into Servlet Context for accessibility
-                // ctx.getServletContext().setAttribute("aKey", "aValue");
+                // Set WEB-INF and lucee-server directory locations
+                ctx.getServletContext().getServletRegistrations().get(servletName).setInitParameter("lucee-web-directory", webAppRootPath + "/WEB-INF");
+                ctx.getServletContext().getServletRegistrations().get(servletName).setInitParameter("lucee-server-root", webAppRootPath + "/lucee-server");
+
+                // Prevent access to Lucee admin outside of localhost
+                Class<?> filterClass = org.apache.catalina.filters.RemoteAddrFilter.class;
+                final String filterName = filterClass.getSimpleName();
+                FilterDef filterDef = new FilterDef();
+                filterDef.setFilterName(filterName);
+                filterDef.setFilterClass(filterClass.getName());
+                filterDef.addInitParameter("allow", "127\\.\\d+\\.\\d+\\.\\d+|::1|0:0:0:0:0:0:0:1");
+                ctx.addFilterDef(filterDef);
+                FilterMap filterMap = new FilterMap();
+                filterMap.setFilterName(filterName);
+                filterMap.addURLPattern("/lucee/admin/*");
+                ctx.addFilterMap(filterMap);
 
                 // Check if running within a jar and use appropriate resource set object
                 String runningUriPath = Application.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();

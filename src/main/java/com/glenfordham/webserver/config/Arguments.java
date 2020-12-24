@@ -29,7 +29,15 @@ public enum Arguments {
             "tempDirPrefix",
             true,
             "sets prefix for Tomcat's temporary directory name  eg. prefix",
-            "tomcat-base-dir");
+            "tomcat-base-dir"),
+    WEB_APP_ROOT(
+            "w",
+            true,
+            true,
+            "webapproot",
+            true,
+            "sets the web application root. A directory should be located inside named 'webroot', which is where content will be served from",
+            null);
 
     private final String name;
     private final boolean isRequired;
